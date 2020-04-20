@@ -73,7 +73,7 @@ pipeline {
                     mvn --version
                 '''
                 sh 'mvn compile'
-                /*
+          
                 sh '''
                     mvn sonar:sonar \
                     -Dsonar.projectKey=CorpSite \
@@ -83,7 +83,7 @@ pipeline {
                     -Dsonar.analysis.scm=$GIT_COMMIT \
                     -Dsonar.analysis.buildURL=$BUILD_URL
                 '''
-                */
+               
             }
             */
         }
