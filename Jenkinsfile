@@ -65,7 +65,7 @@ pipeline {
                     junit '**/target/surefire-reports/*.xml' 
                 }
             }
-        
+            /*
             steps {
                 sh '''
                     export M2_HOME=/opt/maven/apache-maven-3.6.3 # your Mavan home path
@@ -85,6 +85,7 @@ pipeline {
                 '''
                 */
             }
+            */
         }
         stage('deploy') {
             steps {
