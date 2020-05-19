@@ -109,7 +109,7 @@ pipeline {
                                 sshTransfer(
                                     sourceFiles: 'target/globex-web.war',
                                     removePrefix: 'target/',
-                                    remoteDirectory: '/opt/tomcat/webapps'
+                                    remoteDirectory: 'tomcat/webapps'
                                 )
                             ]
                         )
