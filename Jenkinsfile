@@ -54,7 +54,7 @@ pipeline {
                 }
                 
                 sh 'mv /opt/tomcat/webapps/globex-web.war /opt/tomcat/webapps/globex-web-uat.war'
-                sh 'mv /opt/tomcat/webapps/globex-web.war.tmp /opt/tomcat/webapps/globex-web-uat.war'
+                sh 'mv /opt/tomcat/webapps/globex-web.war.tmp /opt/tomcat/webapps/globex-web.war'
             }
         }
         stage('UAT test') {
