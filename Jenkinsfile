@@ -32,6 +32,8 @@ pipeline {
                 sh 'mvn package'
                 snDevOpsArtifact(artifactsPayload: """{"artifacts": [{"name": "globex-jk.war", "version": "1.0.$BUILD_NUMBER","semanticVersion": "1.0.$BUILD_NUMBER","repositoryName": "CorpSite-jenkins"}]}""")
 
+                sh 'mv /opt/tomcat/webapps/globex-web.war /opt/tomcat/webapps/globex-web.war.tmp'
+                
                 script {
                     sshPublisher(continueOnError: false, failOnError: true,
                     publishers: [
@@ -39,15 +41,20 @@ pipeline {
                             configName:'CorpSite UAT',
                             verbose: true,
                             transfers: [
+                                
                                 sshTransfer(
                                     sourceFiles: 'target/globex-web.war',
                                     removePrefix: 'target/',
-                                    remoteDirectory: 'tomcat/webapps'
+                                    remoteDirectory: 'tomcat/webapps',
+                                    execCommand: "mv /opt/tomcat/webapps/globex-web.war
                                 )
                             ]
                         )
                     ])
                 }
+                
+                sh 'mv /opt/tomcat/webapps/globex-web.war /opt/tomcat/webapps/globex-web-uat.war'
+                sh 'mv /opt/tomcat/webapps/globex-web.war.tmp /opt/tomcat/webapps/globex-web-uat.war'
             }
         }
         stage('UAT test') {
