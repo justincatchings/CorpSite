@@ -45,8 +45,7 @@ pipeline {
                                 sshTransfer(
                                     sourceFiles: 'target/globex-web.war',
                                     removePrefix: 'target/',
-                                    remoteDirectory: 'tomcat/webapps',
-                                    execCommand: "mv /opt/tomcat/webapps/globex-web.war
+                                    remoteDirectory: 'tomcat/webapps'
                                 )
                             ]
                         )
