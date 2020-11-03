@@ -1,0 +1,167 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+# Add comment
+
+trigger:
+- master
+name: $(BuildDefinitionName).$(BuildID)
+variables:
+  System.Debug: true
+  connection: "justincatchings"
+  tooldId: "55fd373f1be314101afa520d0a4bcb2a"
+
+stages:
+- stage: 'Build'
+  jobs:
+
+  - job: 'Build'
+    steps:
+
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'package'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+    - task: CmdLine@2
+      inputs:
+        script: 'ls -ailR'
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFiles: 'target/surefire-reports/TEST-*.xml'
+        testRunTitle: '$(Agent.OS) - $(Build.BuildNumber)[$(Agent.JobName)] - JUNIT'
+        condition: succeededOrFailed()
+
+    - task: CopyFiles@2
+      inputs:
+        sourceFolder: 'target'
+        contents: 'globex-web.war'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+        cleanTargetFolder: true
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'corpsite'
+        publishLocation: 'Container'
+
+    - task: ServiceNow-DevOps-Agent-Artifact-Registration@1
+      inputs:
+        connectedServiceName: "$(connection)"
+        artifactsPayload: |
+          {
+                     "artifacts": [
+                     {
+                         "name": "globex-web.war",
+                         "repositoryName": "corpsite-ADO",
+                         "version": "1.0.$(Build.BuildId)",
+                         "semanticVersion": "1.0.$(Build.BuildId)"
+                     }]}
+
+- stage: 'Test'
+  jobs:
+  - job: 'Test'
+    steps:
+
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'test'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+- stage: 'UAT'
+  jobs:
+  - job: 'UAT'
+    steps:
+
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'corpsite'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: CopyFilesOverSSH@0
+      inputs:
+        sshEndpoint: 'UAT'
+        sourceFolder: '$(System.ArtifactsDirectory)/corpsite'
+        contents: '*.war'
+        targetFolder: '/opt/tomcat/webapps'
+        overwrite: true
+        preserveTimestamp: true
+
+- stage: 'Prod'
+  jobs:
+  - job: 'Prod'
+    pool: server
+    steps:
+
+    - task: ServiceNow-DevOps-Server-Package-Registration@1
+      inputs:
+        connectedServiceName: "$(connection)"
+        artifactToolIdExists: false
+        packageRegistrationPayload: >
+          {
+              "name": "CorpsitePackage",
+              "artifacts": [
+              {
+                  "name": "globex-web.war",
+                  "repositoryName": "corpsite-ADO",
+                  "version": "1.0.$(build.buildId)",
+                  "pipelineName":"$(system.teamProject)/$(build.definitionName)",
+                  "taskExecutionNumber":"$(build.buildId)",
+                  "stageName":"$(system.jobDisplayName)",
+                  "branchName":"$(build.sourceBranchName)"
+              }],
+              "pipelineName":"$(system.teamProject)/$(build.definitionName)",
+              "taskExecutionNumber":"$(build.buildId)",
+              "stageName":"$(system.jobDisplayName)",
+              "branchName":"$(build.sourceBranchName)"
+          }
+
+    - task: ServiceNow-DevOps-Server-Change-Acceleration@1
+      inputs:
+        connectedServiceName: "$(connection)"
+        UpstreamJob: 'UAT'
+      condition: true
+
+    # - task: InvokeRESTAPI@1
+    #   inputs:
+    #     connectionType: 'connectedServiceName'
+    #     serviceConnection: ""$(connection)-generic"
+    #     method: 'POST'
+    #     url: "/api/devops/orchestration/changeControl?toolId=$(toolId)"
+    #     body: |
+    #      {
+    #         "buildNumber": "$(build.buildId)",
+    #         "isMultiBranch": "true",
+    #         "branchName": "$(build.sourceBranchName)"
+    #      }
+    #     waitForCompletion: 'true'
+
+  - job: "ProdDeployment"
+    dependsOn: "Prod"
+    pool: "PROD"
+    steps:
+
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'corpsite'
+        downloadPath: '$(System.ArtifactsDirectory)'
+
+    - task: CopyFilesOverSSH@0
+      inputs:
+        sshEndpoint: 'PROD'
+        sourceFolder: '$(System.ArtifactsDirectory)/corpsite'
+        contents: '*.war'
+        targetFolder: '/opt/tomcat/webapps'
+        overwrite: true
+        preserveTimestamp: true
